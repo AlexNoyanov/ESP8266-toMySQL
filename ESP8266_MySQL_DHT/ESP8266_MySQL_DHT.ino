@@ -21,6 +21,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
+
+
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 
@@ -34,39 +36,21 @@ const unsigned long HOUR = 3600*SECOND;
 
 const char* ssid       = "iPhone (Alex)";       // Name of the WI-FI
 const char* password   = "alexpassword1";       // Password for WI-FI
-
-String date = "";                               // Current date
-float h;
-float t;
+                            
+int h;
+int t;
 
 //String request = "INSERT INTO room_temp_sensor(humidity,temperature,date) VALUES(";
 
-String serverName = "https://sensors.noyanov.ru/getSensor.php";
+String serverName = "https://sensors.noyanov.ru/getSensor.php?";
 
-const long utcOffsetInSeconds = 3600;
+int status = WL_IDLE_STATUS;
+WiFiClient client;
 
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
-// Define NTP Client to get time
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 // Get local date and time:
-String getDateTime(){
-  timeClient.update();
-  String currentDate = "";
-  Serial.print(daysOfTheWeek[timeClient.getDay()]);
-  currentDate += daysOfTheWeek[timeClient.getDay()];
-  Serial.print(", ");
-  currentDate += 
-  Serial.print(timeClient.getHours());
-  
-  Serial.print(":");
-  Serial.print(timeClient.getMinutes());
-  Serial.print(":");
-  Serial.println(timeClient.getSeconds());
-  //Serial.println(timeClient.getFormattedTime());
-}
+
 
 void getHumTemp(){
    h = dht.readHumidity();
@@ -90,48 +74,106 @@ void insertToDatabase(String myServerName){
   String tempStr = String(t);
   String humStr = String(h);
 
-if(WiFi.status()== WL_CONNECTED){
-      HTTPClient http;
-      
-      // Your Domain name with URL path or IP address with path
-      http.begin(serverName);
+ HTTPClient http;    //Declare object of class HTTPClient
+ 
+  String ADCData, station, postData;
+  int adcvalue=analogRead(A0);  //Read Analog value of LDR
+  ADCData = String(adcvalue);   //String to interger conversion
+  station = "A";
+ 
+  //Post Data
+  postData = "temp=" + tempStr + "&hum=" + humStr;
+  
+  http.begin("https://sensors.noyanov.ru/getSensor.php");              //Specify request destination
+  //http.addHeader("Content-Type", "application/x-www-form-urlencoded");    //Specify content-type header
+ 
+  int httpCode = http.POST(postData);   //Send the request
+  String payload = http.getString();    //Get the response payload
 
-      // Specify content-type header
-      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-      // Data to send with HTTP POST
-      String httpRequestData = "?temp=";
-         // httpRequestData += tempStr;
-          httpRequestData.concat(tempStr);
-          //httpRequestData += "&hum=";
-          httpRequestData.concat("&hum=");
-          //httpRequestData += humStr;
-          httpRequestData.concat(humStr);
-          //httpRequestData += "&date=";
-          httpRequestData.concat("&date=");
-          //httpRequestData += date;
-          httpRequestData.concat(date);
-          
-             Serial.println(httpRequestData);
-      // Send HTTP POST request
-      int httpResponseCode = http.POST(httpRequestData);
-      
-      // If you need an HTTP request with a content type: application/json, use the following:
-      //http.addHeader("Content-Type", "application/json");
-      //int httpResponseCode = http.POST("{\"api_key\":\"tPmAT5Ab3j7F9\",\"sensor\":\"BME280\",\"value1\":\"24.25\",\"value2\":\"49.54\",\"value3\":\"1005.14\"}");
+  Serial.println(postData);
+ 
+  Serial.println(httpCode);   //Print HTTP return code
+  Serial.println(payload);    //Print request response payload
+ 
+  http.end();  //Close connection
+  
+  delay(5000);  //Post Data at every 5 seconds
+}
+  
+//
+//if(WiFi.status()== WL_CONNECTED){
+//      HTTPClient http;
+//      
+//      // Your Domain name with URL path or IP address with path
+//      http.begin(serverName);
+//
+//      // Specify content-type header
+//      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+//      // Data to send with HTTP POST
+//      String httpRequestData = "?temp=";
+//      httpRequestData = httpRequestData + tempStr;
+//      httpRequestData = httpRequestData + "&hum=";
+//      httpRequestData = httpRequestData + humStr;
+//      //  Serial.println(httpRequestData);
+//      
+//      String serverPath = serverName + httpRequestData;
+//
+//      //String serverPath = serverName +"?";
+//      
+//      Serial.println(serverPath.c_str());
+//      // Your Domain name with URL path or IP address with path
+//      http.begin(serverPath.c_str());
+//      
+//      // Send HTTP GET request
+//      //int httpResponseCode = http.GET();
+//      // Send HTTP POST request
+//      int httpResponseCode = http.POST(httpRequestData);
+//
+//      
+//      if (httpResponseCode>0) {
+//        Serial.print("HTTP Response code: ");
+//        Serial.println(httpResponseCode);
+//        String payload = http.getString();
+//        Serial.println(payload);
+//      }
+//      else {
+//        Serial.print("Error code: ");
+//        Serial.println(httpResponseCode);
+//      }
+//      // Free resources
+//      http.end();
+//      
+//        Serial.println("=== DATA INSERTED SUCCESSFULLY! ==="); 
+//        
+//    }
 
-      // If you need an HTTP request with a content type: text/plain
-      //http.addHeader("Content-Type", "text/plain");
-      //int httpResponseCode = http.POST("Hello, World!");
-     
-      Serial.print("HTTP Response code: ");
-      Serial.println(httpResponseCode);
-        
-      // Free resources
-      http.end();
-      
-        Serial.println("=== DATA INSERTED SUCCESSFULLY! ==="); 
-        
-    }
+//}
+
+void sendPOST(){
+  String data = "temp=25&hum=36";
+  Serial.println(data);
+  if (client.connect("www.sensors.noyanov.ru", 80)) {
+    //Serial.println("client connected");
+    client.println("POST /getSensor.php HTTP/1.1");
+    client.println("Host: sensors.noyanov.ru");
+    client.println("Connection: close");
+    client.print("Content-Length: ");
+    int thisLength = data.length();
+    //int thisLength = 26;
+    client.println(thisLength);
+    Serial.print("Content-Length: ");
+    Serial.println(thisLength);
+    client.println(data);
+  }
+
+  while (client.available()) {
+    char c = client.read();
+    Serial.write(c);
+  }
+
+  if (!client.connected()) {
+    client.stop();
+  }
 
 }
 
@@ -147,14 +189,16 @@ void setup() {
     delay ( 500 );
     Serial.print ( "." );
   }
-  timeClient.begin();
+
 }
 
 void loop() {  
-  date = getDateTime();
+
   getHumTemp();
 
-  insertToDatabase(serverName);
+  //insertToDatabase(serverName);
+
+  sendPOST();
   
   delay(HOUR);
 }
