@@ -23,7 +23,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 
-#include "DHT.h"
+#include <DHT.h>
 #define DHTPIN D1     
 #define DHTTYPE DHT11   
 DHT dht(DHTPIN, DHTTYPE);
@@ -31,8 +31,8 @@ DHT dht(DHTPIN, DHTTYPE);
 const unsigned long SECOND = 1000;
 const unsigned long HOUR = 3600*SECOND;
 
-const char* ssid       =  "HUAWEI-E5330-E887";//"iPhone (Alex)";       // Name of the WI-FI
-const char* password   = "hym0ig9q";       // Password for WI-FI
+const char* ssid       = "MGTS_70"; //"HUAWEI-E5330-E887";//"iPhone (Alex)";       // Name of the WI-FI
+const char* password   = "M2F3B9RX";//"hym0ig9q";       // Password for WI-FI
                             
 int h;
 int t;
@@ -82,8 +82,8 @@ void insertToDatabase(String myServerName){
   http.begin("http://sensors.noyanov.ru/getSensor.php");                  //Specify request destination
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");    //Specify content-type header
  
-  //int httpCode = http.POST(postData);   //Send the request
-  int httpCode = http.POST("temp=26&hum=36");
+  int httpCode = http.POST(postData);   //Send the request
+  //int httpCode = http.POST("temp=26&hum=36");
   String payload = http.getString();    //Get the response payload
  
   Serial.println(httpCode);   //Print HTTP return code
